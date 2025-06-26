@@ -5,7 +5,7 @@ from utils import make_good_unitary, power_ssp
 
 # Parameters
 N = 1    # Beware of averaging artifacts!!
-D = 3000   # Dimensionality of each SSP
+D = 50   # Dimensionality of each SSP
 exponents = np.linspace(-50, 50, 1000)  # Exponents from -50 to 50
 
 # Generate N unitary SSPs
@@ -15,11 +15,8 @@ ssps = np.array([make_good_unitary(D) for _ in range(N)])
 average_dot_products = []
 average_cosine_similarities = []
 
-# Precompute the original SSPs raised to the 20th power
-ssps_original = np.array([power_ssp(ssp, 20) for ssp in ssps])
-
 # Compute norms of the original SSPs
-norms_original = np.linalg.norm(ssps_original, axis=1)
+norms_original = np.linalg.norm(ssps, axis=1)
 
 # Loop over exponents
 for exponent in exponents:
@@ -27,7 +24,7 @@ for exponent in exponents:
     ssps_powered = np.array([power_ssp(ssp, exponent) for ssp in ssps])
     
     # Compute dot products between original and exponentiated SSPs
-    dot_products = np.einsum('ij,ij->i', ssps_original, ssps_powered)
+    dot_products = np.einsum('ij,ij->i', ssps, ssps_powered)
     
     # Compute norms of the exponentiated SSPs
     norms_powered = np.linalg.norm(ssps_powered, axis=1)
@@ -44,9 +41,9 @@ for exponent in exponents:
 
 # Plot the results
 plt.figure(figsize=(10, 6))
-plt.plot(exponents, average_dot_products, label='Average Dot Product')
-plt.plot(exponents, average_cosine_similarities, label='Average Cosine Similarity')
-plt.title('Average Dot Product and Cosine Similarity between Original and Exponentiated SSPs')
+plt.plot(exponents, average_dot_products, label='Dot Product')
+plt.plot(exponents, average_cosine_similarities, label='Cosine Similarity')
+plt.title('Dot Product and Cosine Similarity between Original and Exponentiated SSPs')
 plt.xlabel('Exponent')
 plt.ylabel('Value')
 plt.legend()
