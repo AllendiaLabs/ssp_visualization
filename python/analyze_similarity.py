@@ -5,7 +5,7 @@ from utils import make_good_unitary, power_ssp
 
 # Parameters
 N = 1    # Beware of averaging artifacts!!
-D = 50   # Dimensionality of each SSP
+D = 3   # Dimensionality of each SSP
 exponents = np.linspace(-50, 50, 1000)  # Exponents from -50 to 50
 
 # Generate N unitary SSPs
