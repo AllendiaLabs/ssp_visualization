@@ -1,19 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sspspace.util import make_good_unitary
-
-def power_ssp(ssp, exponent):
-    """
-    Raises the SSP to a given power/exponent in the Fourier domain.
-    """
-    ssp_fft = np.fft.fft(ssp)
-    ssp_pow = np.fft.ifft(ssp_fft ** exponent).real
-    return ssp_pow
+from utils import make_good_unitary, power_ssp
 
 # Parameters
 N = 1    # Beware of averaging artifacts!!
-D = 200   # Dimensionality of each SSP
+D = 3000   # Dimensionality of each SSP
 exponents = np.linspace(-50, 50, 1000)  # Exponents from -50 to 50
 
 # Generate N unitary SSPs

@@ -3,15 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D  # Import the 3D toolkit
 
-from sspspace.util import make_good_unitary  # Ensure this module is available
-
-def power_ssp(ssp, exponent):
-    """
-    Raises the SSP to a given power/exponent in the Fourier domain.
-    """
-    ssp_fft = np.fft.fft(ssp)
-    ssp_pow = np.fft.ifft(ssp_fft ** exponent).real
-    return ssp_pow
+from utils import make_good_unitary, power_ssp
 
 # Parameters
 d = 10  # Dimension of the SSP

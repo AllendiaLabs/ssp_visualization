@@ -1,16 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-
-from sspspace.util import make_good_unitary
-
-def power_ssp(ssp, exponent):
-    """
-    Raises the SSP to a given power/exponent in the Fourier domain.
-    """
-    ssp_fft = np.fft.fft(ssp)
-    ssp_pow = np.fft.ifft(ssp_fft ** exponent).real
-    return ssp_pow
+from utils import make_good_unitary, power_ssp
 
 # Parameters
 d = 3  # Dimension of the SSP
