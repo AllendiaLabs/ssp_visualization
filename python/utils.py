@@ -34,6 +34,19 @@ def custom_fft(x):
     T = np.exp(-2j * np.pi * np.arange(N // 2) / N)
     return np.concatenate([even + T * odd, even - T * odd])
 
+def custom_conj(x):
+    """
+    Custom implementation of complex conjugate.
+    
+    Args:
+        x: Input array (complex)
+    
+    Returns:
+        Complex conjugate of x (real part unchanged, imaginary part negated)
+    """
+    x = np.asarray(x, dtype=complex)
+    return x.real - 1j * x.imag
+
 def custom_ifft(x):
     """
     Custom implementation of 1D inverse FFT.
@@ -50,9 +63,9 @@ def custom_ifft(x):
     N = len(x)
     
     # Use the relationship: IFFT(x) = conj(FFT(conj(x))) / N
-    return np.conj(custom_fft(np.conj(x))) / N
+    return custom_conj(custom_fft(custom_conj(x))) / N
 
-USE_CUSTOM_FFT = False
+USE_CUSTOM_FFT = True
 if USE_CUSTOM_FFT:
     fft = custom_fft
     ifft = custom_ifft

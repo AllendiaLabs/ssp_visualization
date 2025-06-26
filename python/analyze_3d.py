@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D  # Import the 3D toolkit
 from utils import make_good_unitary, power_ssp
 
 # Parameters
-d = 10  # Dimension of the SSP
+d = 70  # Dimension of the SSP
 ssp = make_good_unitary(d)
 
 # Define the range and number of exponents
