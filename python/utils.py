@@ -69,9 +69,11 @@ USE_CUSTOM_FFT = True
 if USE_CUSTOM_FFT:
     fft = custom_fft
     ifft = custom_ifft
+    conj = custom_conj
 else:
     fft = np.fft.fft
     ifft = np.fft.ifft
+    conj = np.conj
 
 def make_good_unitary(D, eps=1e-3, rng=np.random):
     a = rng.rand((D - 1) // 2)
@@ -83,7 +85,7 @@ def make_good_unitary(D, eps=1e-3, rng=np.random):
     fv = np.zeros(D, dtype='complex64')
     fv[0] = 1
     fv[1:(D + 1) // 2] = np.cos(phi) + 1j * np.sin(phi)
-    fv[-1:D // 2:-1] = np.conj(fv[1:(D + 1) // 2])
+    fv[-1:D // 2:-1] = conj(fv[1:(D + 1) // 2])
     if D % 2 == 0:
         fv[D // 2] = 1
 
