@@ -36,6 +36,9 @@
             padding: 20px;
             background: #f8f9fa;
             border-radius: 8px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
         
         .control-group {
@@ -142,6 +145,19 @@
             margin-top: 20px;
         }
         
+        /* Added heatmap container styling */
+        .heatmap-container {
+            position: relative;
+            height: 333px; /* 500 / 1.5 */
+            margin-top: 20px;
+            /* overflow removed to eliminate scrollbars */
+        }
+        #heatmapCanvas {
+            image-rendering: pixelated;
+            width: 100%;
+            height: 100%;
+        }
+        
         button {
             background: #007bff;
             color: white;
@@ -205,14 +221,21 @@
                 <input type="range" id="numPoints" min="20" max="1000" value="100" step="10">
                 <div class="value-display" id="numPointsValue">100</div>
             </div>
+            <!-- New SSP button inside sticky panel -->
+            <div class="control-group" style="align-self: end;">
+                <button id="newSSPButton" onclick="generateNewSSP()" style="margin-top: auto;">New SSP</button>
+            </div>
         </div>
-        
-        <button id="newSSPButton" onclick="generateNewSSP()" style="margin: 10px 0;">New SSP</button>
         
         <div id="status"></div>
         
         <div class="chart-container">
             <canvas id="similarityChart"></canvas>
+        </div>
+        
+        <!-- Added heatmap container -->
+        <div class="heatmap-container">
+            <canvas id="heatmapCanvas"></canvas>
         </div>
     </div>
 
@@ -222,6 +245,8 @@
         let isComputing = false;
         let cachedSSP = null;
         let cachedDimensions = null;
+        // Store the latest heatmap data for responsive redraws
+        let lastHeatmapMatrix = null;
 
         // Complex number operations
         class Complex {
@@ -419,6 +444,8 @@
             const sspNorms = [];
             const sspMeans = [];
             const sspStds = [];
+            // Added matrix to hold exponentiated SSP values
+            const sspMatrix = [];
             
             // Compute norms of original SSPs
             const normsOriginal = ssps.map(ssp => norm(ssp));
@@ -467,6 +494,8 @@
                 sspNorms.push(avgNorm);
                 sspMeans.push(avgMean);
                 sspStds.push(avgStd);
+                // Store the powered SSP for heatmap
+                sspMatrix.push(sspsPowered[0]);
             }
             
             // document.getElementById('status').innerHTML = '';
@@ -477,7 +506,9 @@
                 cosineSimilarities: averageCosineSimilarities,
                 sspNorms: sspNorms,
                 sspMeans: sspMeans,
-                sspStds: sspStds
+                sspStds: sspStds,
+                // Return the matrix for heatmap
+                sspMatrix: sspMatrix
             };
         }
 
@@ -573,22 +604,31 @@
                                     const minExp = parseFloat(document.getElementById('exponentMin').value);
                                     const maxExp = parseFloat(document.getElementById('exponentMax').value);
                                     
-                                    // Show min, max, and 1 (if in range)
+                                    // Show min, max, 0, and 1 (if in range)
                                     if (index === 0) return minExp.toFixed(1);
                                     if (index === values.length - 1) return maxExp.toFixed(1);
-                                    
-                                    // Find if 1 is in the range and show it
+
+                                    // Calculate the step size between ticks
                                     const step = (maxExp - minExp) / (values.length - 1);
-                                    const currentValue = minExp + index * step;
+
+                                    // Decide which single tick (if any) should show the label "0".
+                                    // We only add this tick when 0 lies strictly inside (minExp, maxExp)
+                                    // to avoid duplicating the min/max labels.
+                                    if (0 > minExp && 0 < maxExp) {
+                                        const nearestZeroIndex = Math.round((0 - minExp) / step);
+                                        if (index === nearestZeroIndex) {
+                                            return '0';
+                                        }
+                                    }
 
                                     // Decide which single tick (if any) should show the label "1".
                                     if (1 > minExp && 1 < maxExp) {
-                                        const nearestIndex = Math.round((1 - minExp) / step);
-                                        if (index === nearestIndex) {
+                                        const nearestOneIndex = Math.round((1 - minExp) / step);
+                                        if (index === nearestOneIndex) {
                                             return '1';
                                         }
                                     }
-                                    
+
                                     return '';
                                 }
                             }
@@ -632,6 +672,9 @@
                 chart.data.datasets[3].data = results.sspMeans;
                 chart.data.datasets[4].data = results.sspStds;
                 chart.update();
+                
+                // Draw heatmap with the new data
+                drawHeatmap(results.sspMatrix);
                 
             } catch (error) {
                 console.error('Error during analysis:', error);
@@ -699,6 +742,55 @@
             }, 300); // 300ms delay
         }
 
+        // Draw heatmap of exponentiated SSP values
+        function drawHeatmap(matrix) {
+            const canvas = document.getElementById('heatmapCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            const container = canvas.parentElement;
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            const numCols = matrix.length;
+            const numRows = matrix[0].length;
+            
+            // Resize canvas to match container size
+            canvas.width = containerWidth;
+            canvas.height = containerHeight;
+            
+            // Reserve space on the left for y-axis ticks/labels of the upper chart
+            const leftPad = 60; // px
+            const rightPad = 20; // px to match right padding in similarity chart
+            const cellWidth = (canvas.width - leftPad - rightPad) / numCols;
+            const cellHeight = canvas.height / numRows;
+            
+            // Determine min and max values for color scaling
+            let minVal = Infinity;
+            let maxVal = -Infinity;
+            for (let c = 0; c < numCols; c++) {
+                for (let r = 0; r < numRows; r++) {
+                    const val = matrix[c][r];
+                    if (val < minVal) minVal = val;
+                    if (val > maxVal) maxVal = val;
+                }
+            }
+            const range = maxVal - minVal || 1;
+            
+            for (let c = 0; c < numCols; c++) {
+                for (let r = 0; r < numRows; r++) {
+                    const val = matrix[c][r];
+                    const t = (val - minVal) / range; // Normalized 0-1
+                    const hue = (1 - t) * 240; // Blue (low) to red (high)
+                    ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                    ctx.fillRect(leftPad + c * cellWidth, r * cellHeight, cellWidth, cellHeight);
+                }
+            }
+            
+            // Cache the matrix for future redraws (e.g., on window resize)
+            lastHeatmapMatrix = matrix;
+        }
+
         // Initialize everything
         document.addEventListener('DOMContentLoaded', function() {
             initChart();
@@ -722,6 +814,13 @@
             
             // Initial visualization
             updateVisualization();
+            
+            // Redraw heatmap on window resize to maintain alignment
+            window.addEventListener('resize', () => {
+                if (lastHeatmapMatrix) {
+                    drawHeatmap(lastHeatmapMatrix);
+                }
+            });
         });
     </script>
 </body>
