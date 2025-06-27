@@ -46,6 +46,9 @@ let regenerateTimer = null;
 /** Cached network configuration to avoid regenerating weights unnecessarily */
 let cachedNetworkConfig = null;
 
+/** Animation state flag */
+let animRunning = false;
+
 /**
  * Update the textual value displays next to each slider.
  * This function is invoked on every `input` event.
@@ -66,10 +69,6 @@ function updateSliderDisplays() {
   const expEl = document.getElementById('exponent');
   if (expEl) {
     document.getElementById('exponentValue').textContent = expEl.value;
-  }
-  const speedEl = document.getElementById('animationSpeed');
-  if (speedEl) {
-    document.getElementById('animationSpeedValue').textContent = `${speedEl.value} ms`;
   }
 }
 
@@ -223,50 +222,47 @@ function generateArtForExponent(exponent, forceNewNetwork = false) {
 
 /** Start or restart the exponent animation using slider-defined speed. */
 function startAnimation() {
-  // Clear any existing timer first
-  if (animTimer) {
-    clearInterval(animTimer);
-  }
+  // Stop any running loop first
+  stopAnimation();
 
-  // Reset animation index to start from beginning
+  animRunning = true;
   animIndex = 0;
-
-  const speedMs = Math.max(parseInt(document.getElementById('animationSpeed').value, 10), 100);
 
   const expSlider = document.getElementById('exponent');
   if (!expSlider) return;
 
-  const { minExp, maxExp } = getExponentRange();
-  const numPoints = parseInt(document.getElementById('numPoints').value, 10);
+  const frameLoop = () => {
+    if (!animRunning) return;
 
-  // Create smooth oscillation using sine wave
-  const generateExponent = (index) => {
-    // Use sine wave to oscillate between min and max
-    const t = (index / numPoints) * 2 * Math.PI;
-    const sineValue = Math.sin(t);
-    // Map sine wave (-1 to 1) to exponent range (minExp to maxExp)
-    return minExp + (sineValue + 1) * (maxExp - minExp) / 2;
-  };
+    if (!isGenerating) {
+      const now = Date.now();
+      if (now - lastRenderTime >= MIN_FRAME_INTERVAL) {
+        // Fetch latest animation parameters each frame so changes take effect immediately.
+        const { minExp, maxExp } = getExponentRange();
+        const numPts = parseInt(document.getElementById('numPoints').value, 10);
 
-  animTimer = setInterval(() => {
-    const now = Date.now();
-    if (now - lastRenderTime < MIN_FRAME_INTERVAL) {
-      return; // Skip frame if too soon
+        // Compute exponent for current frame.
+        const t = (animIndex / numPts) * 2 * Math.PI;
+        const sineValue = Math.sin(t);
+        const currentExp = minExp + (sineValue + 1) * (maxExp - minExp) / 2;
+
+        // Advance animation index, wrapping around numPts.
+        animIndex = (animIndex + 1) % numPts;
+
+        lastRenderTime = now;
+        generateArtForExponent(currentExp, false);
+      }
     }
 
-    // Calculate current exponent using oscillation
-    const currentExp = generateExponent(animIndex);
-    
-    // Advance to next position in cycle
-    animIndex = (animIndex + 1) % numPoints;
+    requestAnimationFrame(frameLoop);
+  };
 
-    lastRenderTime = now;
-    generateArtForExponent(currentExp, false);
-  }, speedMs);
+  requestAnimationFrame(frameLoop);
 }
 
 /** Halt the ongoing exponent animation (if any). */
 function stopAnimation() {
+  animRunning = false;
   if (animTimer) {
     clearInterval(animTimer);
     animTimer = null;
@@ -294,22 +290,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Additional sliders controlling exponent, animation speed, number of points, and bounds
-  ['exponent', 'animationSpeed', 'numPoints', 'exponentMin', 'exponentMax', 'dimensions'].forEach((id) => {
+  // Additional sliders controlling exponent, number of points, and bounds
+  ['exponent', 'numPoints', 'exponentMin', 'exponentMax', 'dimensions'].forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
 
-    if (id === 'animationSpeed') {
-      el.addEventListener('input', () => {
-        updateSliderDisplays();
-        startAnimation(); // Always restart animation with new speed
-      });
-    } else if (id === 'numPoints') {
-      el.addEventListener('input', () => {
-        updateSliderDisplays();
-        startAnimation(); // Always restart animation with new number of points
-      });
-    } else if (id === 'exponent') {
+    if (id === 'exponent') {
       el.addEventListener('input', () => {
         updateSliderDisplays();
         stopAnimation(); // Manual change halts animation
@@ -320,24 +306,41 @@ document.addEventListener('DOMContentLoaded', () => {
           generateArtForExponent(val, false);
         }, 200);
       });
-    } else {
-      // Range or dimension change: update displays and possibly network regen
+    } else if (id === 'numPoints') {
+      el.addEventListener('input', () => {
+        updateSliderDisplays();
+        // Reset index and restart animation if it's running, else regenerate current frame
+        animIndex = 0;
+        if (animRunning) {
+          startAnimation();
+        } else {
+          const val = parseFloat(document.getElementById('exponent').value);
+          generateArtForExponent(val, true);
+        }
+      });
+    } else if (id === 'exponentMin' || id === 'exponentMax') {
       el.addEventListener('input', () => {
         updateSliderDisplays();
         // Reset animation index when parameters change
         animIndex = 0;
         
         // Restart animation for bounds changes
-        if (id === 'exponentMin' || id === 'exponentMax') {
-          if (animTimer) {
-            startAnimation(); // Restart with new parameters
-          } else {
-            // If animation stopped, regenerate art with current exponent value
-            const val = parseFloat(document.getElementById('exponent').value);
-            generateArtForExponent(val, true);
-          }
-        } else if (!animTimer) {
-          // For other changes (like dimensions), regenerate if animation stopped
+        if (animRunning) {
+          startAnimation(); // Restart with new parameters
+        } else {
+          // If animation stopped, regenerate art with current exponent value
+          const val = parseFloat(document.getElementById('exponent').value);
+          generateArtForExponent(val, true);
+        }
+      });
+    } else if (!animRunning) {
+      // For other changes (like dimensions), regenerate if animation stopped or restart animation
+      el.addEventListener('input', () => {
+        updateSliderDisplays();
+        animIndex = 0;
+        if (animRunning) {
+          startAnimation();
+        } else {
           const val = parseFloat(document.getElementById('exponent').value);
           generateArtForExponent(val, true);
         }
@@ -350,9 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // The art canvas will be initialised by `generateArtForExponent` below.
 
-  // Kick-off first rendering & animation.
+  // Initial render; user may start animation via the Play button when ready.
   generateArtForExponent(parseFloat(document.getElementById('exponent').value), true);
-  startAnimation();
 });
 
 // Attach to global scope so inline HTML can access it.

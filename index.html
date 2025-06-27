@@ -83,16 +83,37 @@
             </div>
 
             <!-- Animation speed slider -->
-            <div class="control-group">
-                <label for="animationSpeed">Animation&nbsp;Speed&nbsp;(ms)</label>
-                <input type="range" id="animationSpeed" min="20" max="1D000" value="200" step="50">
-                <div class="value-display" id="animationSpeedValue">200 ms</div>
-            </div>
+            <!-- (removed animation speed slider; replaced by play button) -->
 
             <div class="control-group" style="align-self: end;">
                 <button id="generateArtButton" onclick="generateNewArt()" style="margin-top: auto;">New Art</button>
             </div>
             <!-- END Neural Art Controls -->
+            <!-- Play animation button -->
+            <div class="control-group">
+                <button id="playAnimationButton" onclick="startArtAnimation()">Play&nbsp;Animation</button>
+            </div>
+            <!-- BEGIN Audio SSP Controls -->
+            <div class="control-group">
+                <label for="audioUpload">Audio&nbsp;Sample</label>
+                <input type="file" id="audioUpload" accept="audio/*">
+            </div>
+
+            <div class="control-group">
+                <label for="audioExponent">Audio&nbsp;Exponent</label>
+                <input type="range" id="audioExponent" min="-10" max="10" value="1" step="0.1">
+                <div class="value-display" id="audioExponentValue">1</div>
+            </div>
+
+            <div class="control-group" style="align-self: start;">
+                <button id="processAudioButton" disabled>Process</button>
+            </div>
+
+            <div class="control-group" style="align-self: start;">
+                <button id="playOriginalButton" disabled>Play&nbsp;Original</button>
+                <button id="playExponentiatedButton" disabled>Play&nbsp;Exponent</button>
+            </div>
+            <!-- END Audio SSP Controls -->
         </div>
         
         <div id="status"></div>
@@ -121,5 +142,6 @@
     <script src="js/random_art.js"></script>
     <script src="js/neural_art_ui.js"></script>
     <script src="js/ssp.js"></script>
+    <script src="js/audio_ssp.js"></script>
 </body>
 </html> 
